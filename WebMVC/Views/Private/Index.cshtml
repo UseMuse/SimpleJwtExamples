@@ -1,0 +1,30 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">@ViewBag.UserName</h1>
+    <p id="currentTime">@ViewBag.CurrentTime</p>
+    <p id="tokenLifetime">@ViewBag.TokenLifetime</p>
+</div>
+@section Scripts {
+    <script>
+        var is401 = false;
+        const timeout = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+        async function recursion(value) {
+            await getPrivateData();
+            if (value) return 0;
+
+            await timeout(1000);
+            return await recursion(is401);
+        }
+       
+        async function ready() {
+            await getPrivateData();
+            (async () => console.log(await recursion(is401)))();
+        };
+
+        document.addEventListener("DOMContentLoaded", ready);
+    </script>
+}

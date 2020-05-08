@@ -1,8 +1,134 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+﻿
+@{
+    ViewData["Title"] = "Sing in";
+    Layout = "~/Views/Shared/_Layout.cshtml";
 }
+<link href="~/css/signIn.css" rel="stylesheet" />
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<form class="form-signin">
+    <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
+    <label for="login">Login(test)</label>
+    <input type="text" id="login" class="form-control" placeholder="Login" required autofocus name="login">
+    <label for="password">Password(test)</label>
+    <input type="password" id="password" class="form-control" placeholder="Password" required name="password">
+    <button id="signIn" class="btn btn-lg btn-primary btn-block">Sign in</button>
+</form>
+<div id="message"></div>
+<button id="singOut" class="btn btn-lg btn-primary btn-block">Sign out</button>
+<div class="container" id="privateDatas">
+    <div class="row">
+        <button id="getPrivateDatas" class="btn btn-lg btn-primary btn-block">Get Private Datas</button>
+        <div class="col-sm">
+            <span>Request status code private method: </span><p id="requestStatusCode">@ViewBag.TokenLifetime</p>
+        </div>
+        <div class="col-sm">
+            <span>CurrentTime(private data): </span><p id="currentTime">@ViewBag.CurrentTime</p>
+        </div>
+        <div class="col-sm">
+            <span>Access Token End Time(private data): </span><p id="tokenLifetime">@ViewBag.TokenLifetime</p>
+        </div>
+    </div>
 </div>
+@section Scripts {
+    <script>
+        var signInBtnElement, loginInputElement, passwordInputElement, signOutBtnElement, signFormElement, messageElement, getPrivateDatasBtnElement, privateDatasContainerElement, requestStatusCodeElement,currentTimeElement,is401 ;
+        const localStorageTokenKey = 'token'
+
+        async function ready() {
+            signInBtn = document.getElementById('signIn');
+            loginInputElement = document.getElementById('login');
+            passwordInputElement = document.getElementById('password');
+            signOutBtnElement = document.getElementById('singOut');
+            getPrivateDatasBtnElement = document.getElementById('getPrivateDatas');
+            privateDatasContainerElement = document.getElementById('privateDatas');
+            requestStatusCodeElement = document.getElementById('requestStatusCode');
+            currentTimeElement = document.getElementById('currentTime');
+            signFormElement = document.getElementsByClassName('form-signin')[0];
+            messageElement = document.getElementById('message');
+
+            signInBtn.addEventListener('click', signIn, false);
+            signOutBtnElement.addEventListener('click', singOut, false);
+            getPrivateDatasBtnElement.addEventListener('click', getPrivateDatas, false);
+
+            let token = localStorage.getItem(localStorageTokenKey);
+            if (token === null) {
+                signFormElement.style.display = 'block';
+            }
+            else {
+                await signInSuccess();
+            }
+        };
+        async function signIn(e) {
+            e.preventDefault();
+            let login = loginInputElement.value;
+            let password = passwordInputElement.value;
+            try {
+                 let response = await fetch('@Url.Action("Login", "Auth")', {
+                     cache: 'no-store',
+                     method: 'POST',
+                     body: JSON.stringify({ Login: login, Password: password }),
+                     headers: { 'Content-Type': 'application/json' }
+                 });
+                if (response.status === 401) {
+                    messageElement.innerText = 'Incorrect login or password';
+                }
+                else {
+                    let responseObj = await response.json();
+                    localStorage.setItem(localStorageTokenKey, responseObj.token);
+                    await signInSuccess();
+                }
+            } catch (e) {
+                messageElement.innerText = e.message;
+            }
+        };
+       async function signInSuccess() {
+            messageElement.innerText = 'You have successfully logged in';
+            signFormElement.style.display = 'none';
+           signOutBtnElement.style.display = 'block';
+           privateDatasContainerElement.style.display = 'block';
+           requestStatusCodeElement.innerHTML = '';
+           document.getElementById('tokenLifetime').innerHTML = '';
+           currentTimeElement.innerHTML = '';
+        }
+
+        function singOut(e) {
+            //if (typeof text !== 'string' && !(text instanceof String)) {
+            //    text = '';
+            //}
+            localStorage.removeItem(localStorageTokenKey);
+            messageElement.innerText = '';
+            signFormElement.style.display = 'block';
+            signOutBtnElement.style.display = 'none';
+            privateDatasContainerElement.style.display = 'none';
+        };
+        async function getPrivateDatas() {
+            privateDatasContainerElement.style.display = 'block';
+            var bearer = 'Bearer ' + localStorage.getItem(localStorageTokenKey);
+            try {
+            let response = await  fetch('@Url.Action("GetPrivateDatas", "Home")', {
+                method: 'GET',
+                //withCredentials: true,
+                //credentials: 'include',
+                headers: {
+                    'Authorization': bearer,
+                    'Content-Type': 'application/json'
+                }
+                });
+                if (response.status === 401) {
+                    requestStatusCodeElement.innerHTML = '401';
+                    is401 = true;
+                }
+                else {
+                    requestStatusCodeElement.innerHTML = '200';
+                    let privateData = await response.json();
+                    currentTimeElement.innerHTML = privateData.currentTime;
+                    document.getElementById('tokenLifetime').innerHTML = privateData.tokenLifetime;
+                }
+            } catch (e) {
+                console.log(e);
+            }
+        };
+       
+        document.addEventListener("DOMContentLoaded", ready);
+    </script>
+}
